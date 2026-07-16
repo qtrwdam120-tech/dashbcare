@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -13,7 +12,8 @@ import {
   ChevronLeft,
   Shield,
   LogOut,
-  BarChart3
+  BarChart3,
+  Circle
 } from 'lucide-react';
 
 const menuItems = [
@@ -33,78 +33,116 @@ export default function Sidebar({ collapsed, setCollapsed }) {
 
   return (
     <aside
-      className={`fixed top-0 right-0 h-full bg-gradient-to-b from-dark-800 to-dark-900 text-white z-50 transition-all duration-300 ${
+      className={`fixed top-0 right-0 h-screen bg-slate-900 text-white z-50 transition-all duration-300 ${
         collapsed ? 'w-20' : 'w-64'
       }`}
-      style={{ boxShadow: '4px 0 20px rgba(0, 0, 0, 0.3)' }}
+      style={{ boxShadow: '4px 0 30px rgba(0, 0, 0, 0.4)' }}
     >
-      {/* Logo */}
-      <div className="flex items-center justify-between p-4 border-b border-dark-600">
-        {!collapsed && (
+      {/* Logo Section */}
+      <div className="h-16 flex items-center px-4 border-b border-slate-700/50">
+        {!collapsed ? (
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-700 rounded-xl flex items-center justify-center shadow-lg">
-              <Shield className="w-6 h-6 text-white" />
+            <div className="w-10 h-10 bg-gradient-to-br from-sky-500 to-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
+              <Shield className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="font-bold text-lg">بي كير</h1>
-              <p className="text-xs text-dark-300">BeCare Insurance</p>
+              <h1 className="font-bold text-base text-white">بي كير</h1>
+              <p className="text-[10px] text-slate-400">BeCare Insurance</p>
             </div>
           </div>
-        )}
-        {collapsed && (
-          <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-700 rounded-xl flex items-center justify-center mx-auto shadow-lg">
-            <Shield className="w-6 h-6 text-white" />
+        ) : (
+          <div className="w-10 h-10 bg-gradient-to-br from-sky-500 to-blue-600 rounded-lg flex items-center justify-center mx-auto shadow-lg shadow-blue-500/20">
+            <Shield className="w-5 h-5 text-white" />
           </div>
         )}
       </div>
 
       {/* Navigation */}
-      <nav className="p-3 space-y-1">
-        {menuItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = location.pathname === item.path;
-          
-          return (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
-                isActive
-                  ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-lg shadow-primary-500/30'
-                  : 'text-dark-200 hover:bg-dark-700 hover:text-white'
-              }`}
-            >
-              <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-white' : 'text-dark-300 group-hover:text-white'}`} />
-              {!collapsed && (
-                <span className="font-medium">{item.label}</span>
-              )}
-              {collapsed && (
-                <div className="absolute right-full mr-2 px-3 py-2 bg-dark-700 text-white text-sm rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50">
-                  {item.label}
+      <nav className="py-4 px-3">
+        {!collapsed && (
+          <p className="px-4 mb-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+            القائمة الرئيسية
+          </p>
+        )}
+        
+        <div className="space-y-1">
+          {menuItems.map((item, index) => {
+            const Icon = item.icon;
+            const isActive = location.pathname === item.path;
+            
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className="group relative block"
+              >
+                <div
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${
+                    isActive
+                      ? 'bg-sky-500/15 text-sky-400'
+                      : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                  }`}
+                >
+                  {/* Active Indicator */}
+                  {isActive && (
+                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-sky-500 rounded-l-full" />
+                  )}
+                  
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                    isActive 
+                      ? 'bg-sky-500/20' 
+                      : 'bg-slate-800 group-hover:bg-slate-700'
+                  }`}>
+                    <Icon className={`w-4 h-4 ${isActive ? 'text-sky-400' : 'text-slate-400 group-hover:text-white'}`} />
+                  </div>
+                  
+                  {!collapsed && (
+                    <span className={`font-medium text-sm ${isActive ? 'text-sky-400' : ''}`}>
+                      {item.label}
+                    </span>
+                  )}
                 </div>
-              )}
-            </Link>
-          );
-        })}
+                
+                {/* Tooltip for collapsed state */}
+                {collapsed && (
+                  <div className="absolute right-full top-1/2 -translate-y-1/2 mr-2 px-3 py-2 bg-slate-800 text-white text-sm rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap shadow-xl z-50 border border-slate-700">
+                    {item.label}
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 w-2 h-2 bg-slate-800 rotate-45 border-b border-r border-slate-700" />
+                  </div>
+                )}
+              </Link>
+            );
+          })}
+        </div>
       </nav>
 
+      {/* Spacer */}
+      <div className="flex-1" />
+
       {/* Collapse Button */}
-      <button
-        onClick={() => setCollapsed(!collapsed)}
-        className="absolute bottom-20 left-1/2 -translate-x-1/2 w-10 h-10 bg-dark-700 hover:bg-dark-600 rounded-full flex items-center justify-center transition-colors"
-      >
-        {collapsed ? (
-          <ChevronLeft className="w-5 h-5 text-dark-300" />
-        ) : (
-          <ChevronRight className="w-5 h-5 text-dark-300" />
-        )}
-      </button>
+      <div className="px-3 pb-2">
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors text-slate-400 hover:text-white"
+        >
+          {collapsed ? (
+            <ChevronLeft className="w-5 h-5" />
+          ) : (
+            <>
+              <ChevronRight className="w-5 h-5" />
+              <span className="text-sm">طي القائمة</span>
+            </>
+          )}
+        </button>
+      </div>
 
       {/* Logout */}
-      <div className="absolute bottom-4 left-0 right-0 p-3 border-t border-dark-600">
-        <button className="flex items-center gap-3 px-4 py-3 w-full text-dark-300 hover:text-danger-500 hover:bg-dark-700 rounded-xl transition-all">
-          <LogOut className="w-5 h-5" />
-          {!collapsed && <span className="font-medium">تسجيل الخروج</span>}
+      <div className="p-3 border-t border-slate-700/50">
+        <button className="w-full flex items-center gap-3 px-3 py-2.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all">
+          <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center">
+            <LogOut className="w-4 h-4" />
+          </div>
+          {!collapsed && <span className="text-sm font-medium">تسجيل الخروج</span>}
         </button>
       </div>
     </aside>

@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { SocketProvider } from './context/SocketContext';
 import DashboardLayout from './components/layout/DashboardLayout';
 import Dashboard from './pages/Dashboard';
 import Visitors from './pages/Visitors';
@@ -12,21 +13,23 @@ import SettingsPage from './pages/Settings';
 
 function App() {
   return (
-    <Router>
-      <DashboardLayout>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/visitors" element={<Visitors />} />
-          <Route path="/insurances" element={<Insurances />} />
-          <Route path="/companies" element={<Companies />} />
-          <Route path="/messages" element={<Messages />} />
-          <Route path="/offers" element={<Offers />} />
-          <Route path="/activity" element={<Activity />} />
-          <Route path="/analytics" element={<Analytics />} />
-          <Route path="/settings" element={<SettingsPage />} />
-        </Routes>
-      </DashboardLayout>
-    </Router>
+    <SocketProvider>
+      <Router>
+        <DashboardLayout>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/visitors" element={<Visitors />} />
+            <Route path="/insurances" element={<Insurances />} />
+            <Route path="/companies" element={<Companies />} />
+            <Route path="/messages" element={<Messages />} />
+            <Route path="/offers" element={<Offers />} />
+            <Route path="/activity" element={<Activity />} />
+            <Route path="/analytics" element={<Analytics />} />
+            <Route path="/settings" element={<SettingsPage />} />
+          </Routes>
+        </DashboardLayout>
+      </Router>
+    </SocketProvider>
   );
 }
 

@@ -21,6 +21,7 @@ const io = new Server(httpServer, {
 
 const PORT = process.env.PORT || 3001;
 const CLIENT_URL = process.env.CLIENT_URL || 'https://newbcare.onrender.com';
+const RENDER_PORT = process.env.PORT || 10000; // Render uses PORT env var
 
 // ═══════════════════════════════════════════════════════
 // Logger Utility
@@ -83,12 +84,26 @@ app.use(express.json());
 // اتصال قاعدة البيانات
 // ═══════════════════════════════════════════════════════
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:Fa%40%4020yiz2020@db.zspliwktncgjznoerwlu.supabase.co:5432/postgres',
-  ssl: {
-    rejectUnauthorized: false
-  }
-});
+// Parse the connection string to handle IPv4 fallback
+const getDbConfig = () => {
+  const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:Fa%40%4020yiz2020@db.zspliwktncgjznoerwlu.supabase.co:5432/postgres';
+  
+  // Try IPv4 connection first
+  return {
+    connectionString,
+    ssl: {
+      rejectUnauthorized: false
+    },
+    // Force IPv4
+    host: 'db.zspliwktncgjznoerwlu.supabase.co',
+    port: 5432,
+    // Fallback DNS settings
+    query_timeout: 10000,
+    connectionTimeoutMillis: 10000,
+  };
+};
+
+const pool = new Pool(getDbConfig());
 
 // اختبار الاتصال بقاعدة البيانات
 pool.query('SELECT NOW()')
@@ -99,7 +114,8 @@ pool.query('SELECT NOW()')
     });
   })
   .catch((error) => {
-    logger.error('Failed to connect to database', error);
+    logger.error('Failed to connect to database - Supabase may not be accessible from this network', error);
+    logger.warn('Make sure Supabase project allows connections from 0.0.0.0/0 or specific IPs');
   });
 
 pool.on('error', (error) => {

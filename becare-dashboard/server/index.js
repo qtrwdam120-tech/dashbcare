@@ -89,11 +89,15 @@ app.use(express.json());
 
 // Serve static files from dist folder
 const distPath = join(__dirname, '..', 'dist');
+const distExists = fs.existsSync(distPath) && fs.existsSync(join(distPath, 'index.html'));
 
 // Check if dist folder exists and serve static files
-if (fs.existsSync(distPath)) {
+if (distExists) {
   app.use(express.static(distPath));
-  logger.info('Static files will be served from dist folder');
+  logger.success('Static files found - serving from dist folder');
+} else {
+  logger.warn('No dist folder found - static files will not be served');
+  logger.info('This is expected in development mode');
 }
 
 // Serve index.html for all non-API routes (SPA support)
@@ -102,12 +106,41 @@ app.use((req, res, next) => {
     return next();
   }
   
-  const indexPath = join(distPath, 'index.html');
-  if (fs.existsSync(indexPath)) {
+  if (distExists) {
+    const indexPath = join(distPath, 'index.html');
     return res.sendFile(indexPath);
   }
   
-  res.status(404).send('Not Found');
+  // If no dist folder, return a simple HTML page with API status
+  res.status(200).send(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <title>BeCare Dashboard API</title>
+        <style>
+          body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #1a1a2e; color: #eee; }
+          h1 { color: #00d4ff; }
+          .status { color: #00ff88; }
+          .endpoints { text-align: right; max-width: 600px; margin: 20px auto; background: #16213e; padding: 20px; border-radius: 10px; }
+          a { color: #00d4ff; }
+        </style>
+      </head>
+      <body>
+        <h1>🛡️ BeCare Dashboard API</h1>
+        <p class="status">✅ Server is running</p>
+        <div class="endpoints">
+          <h3>Available Endpoints:</h3>
+          <p>GET /api/visitors - List all visitors</p>
+          <p>GET /api/visitors/:id - Get visitor</p>
+          <p>PATCH /api/visitors/:id - Update visitor</p>
+          <p>GET /api/stats - Dashboard stats</p>
+          <p>GET /api/health - Health check</p>
+        </div>
+        <p><small>Note: Build the frontend with 'npm run build' to serve static files</small></p>
+      </body>
+    </html>
+  `);
 });
 
 logger.info('Static file serving configured');

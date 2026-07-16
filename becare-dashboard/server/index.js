@@ -7,8 +7,15 @@ import express from 'express';
 import cors from 'cors';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+import fs from 'fs';
 import pkg from 'pg';
 const { Pool } = pkg;
+
+// ES Module paths
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const app = express();
 const httpServer = createServer(app);
@@ -79,6 +86,28 @@ app.use((req, res, next) => {
 });
 
 app.use(express.json());
+
+// Serve static files from dist folder
+const distPath = join(__dirname, '..', 'dist');
+
+// Check if dist folder exists and serve static files
+if (fs.existsSync(distPath)) {
+  app.use(express.static(distPath));
+  logger.info('Static files will be served from dist folder');
+}
+
+// Serve index.html for all non-API routes (SPA support)
+app.get('*', (req, res) => {
+  if (!req.path.startsWith('/api') && !req.path.startsWith('/socket.io')) {
+    const indexPath = join(distPath, 'index.html');
+    if (fs.existsSync(indexPath)) {
+      return res.sendFile(indexPath);
+    }
+  }
+  res.status(404).send('Not Found');
+});
+
+logger.info('Static file serving configured');
 
 // ═══════════════════════════════════════════════════════
 // اتصال قاعدة البيانات

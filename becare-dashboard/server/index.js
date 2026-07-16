@@ -5,14 +5,31 @@
 
 import express from 'express';
 import cors from 'cors';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
 import pkg from 'pg';
 const { Pool } = pkg;
 
 const app = express();
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST']
+  }
+});
+
 const PORT = process.env.PORT || 3001;
 
-// Middleware
-app.use(cors());
+// Middleware - CORS
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (req.method === 'OPTIONS') return res.sendStatus(200);
+  next();
+});
+
 app.use(express.json());
 
 // ═══════════════════════════════════════════════════════
@@ -300,8 +317,103 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
+// ═══════════════════════════════════════════════════════
+// Socket.io Events
+// ═══════════════════════════════════════════════════════
+
+io.on('connection', (socket) => {
+  console.log('🔌 Client connected:', socket.id);
+
+  // الانضمام كمسؤول
+  socket.on('admin:join', () => {
+    console.log('👤 Admin joined');
+    socket.join('admin');
+  });
+
+  // تحويل زائر لصفحة معينة
+  socket.on('visitor:redirect', async (data) => {
+    const { visitorId, targetPage } = data;
+    try {
+      await pool.query(
+        'UPDATE visitors SET redirect_page = $1, updated_at = NOW() WHERE id = $2',
+        [targetPage, visitorId]
+      );
+      io.to(visitorId).emit('redirect', { page: targetPage });
+      console.log(`↪️ Visitor ${visitorId} redirected to ${targetPage}`);
+    } catch (error) {
+      console.error('Error redirecting visitor:', error);
+    }
+  });
+
+  // تحديث حالة زائر
+  socket.on('visitor:status_updated', async (data) => {
+    const { visitorId, field, status } = data;
+    try {
+      await pool.query(
+        `UPDATE visitors SET ${field} = $1, updated_at = NOW() WHERE id = $2`,
+        [status, visitorId]
+      );
+      io.to(visitorId).emit('status_updated', { field, status });
+      console.log(`📊 Visitor ${visitorId} status ${field}: ${status}`);
+    } catch (error) {
+      console.error('Error updating status:', error);
+    }
+  });
+
+  // إرسال رسالة لزائر
+  socket.on('visitor:send_message', async (data) => {
+    const { visitorId, message, senderName } = data;
+    try {
+      const result = await pool.query(
+        `INSERT INTO visitor_messages (visitor_id, message, sender_name, is_from_admin) 
+         VALUES ($1, $2, $3, true) RETURNING *`,
+        [visitorId, message, senderName || 'لوحة التحكم']
+      );
+      io.to(visitorId).emit('new_message', result.rows[0]);
+      console.log(`💬 Message sent to ${visitorId}`);
+    } catch (error) {
+      console.error('Error sending message:', error);
+    }
+  });
+
+  // حظر زائر
+  socket.on('visitor:block', async (data) => {
+    const { visitorId } = data;
+    try {
+      await pool.query(
+        'UPDATE visitors SET is_blocked = true WHERE id = $1',
+        [visitorId]
+      );
+      io.to(visitorId).emit('blocked');
+      console.log(`🚫 Visitor ${visitorId} blocked`);
+    } catch (error) {
+      console.error('Error blocking visitor:', error);
+    }
+  });
+
+  // إلغاء حظر زائر
+  socket.on('visitor:unblock', async (data) => {
+    const { visitorId } = data;
+    try {
+      await pool.query(
+        'UPDATE visitors SET is_blocked = false WHERE id = $1',
+        [visitorId]
+      );
+      io.to(visitorId).emit('unblocked');
+      console.log(`✅ Visitor ${visitorId} unblocked`);
+    } catch (error) {
+      console.error('Error unblocking visitor:', error);
+    }
+  });
+
+  socket.on('disconnect', () => {
+    console.log('🔌 Client disconnected:', socket.id);
+  });
+});
+
 // تشغيل الخادم
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
   console.log(`🚀 Backend API Server running on port ${PORT}`);
   console.log(`📊 Database: PostgreSQL`);
+  console.log(`🔌 Socket.io enabled`);
 });

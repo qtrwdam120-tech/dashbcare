@@ -111,6 +111,7 @@ app.use((req, res, next) => {
 });
 
 logger.info('Static file serving configured');
+// Force redeploy
 
 // ═══════════════════════════════════════════════════════
 // اتصال قاعدة البيانات

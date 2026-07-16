@@ -97,13 +97,16 @@ if (fs.existsSync(distPath)) {
 }
 
 // Serve index.html for all non-API routes (SPA support)
-app.get('*', (req, res) => {
-  if (!req.path.startsWith('/api') && !req.path.startsWith('/socket.io')) {
-    const indexPath = join(distPath, 'index.html');
-    if (fs.existsSync(indexPath)) {
-      return res.sendFile(indexPath);
-    }
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api') || req.path.startsWith('/socket.io')) {
+    return next();
   }
+  
+  const indexPath = join(distPath, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    return res.sendFile(indexPath);
+  }
+  
   res.status(404).send('Not Found');
 });
 

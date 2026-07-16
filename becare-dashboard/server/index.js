@@ -667,14 +667,21 @@ app.patch('/api/visitors/:id', async (req, res) => {
     
     const mappedUpdates = {};
     for (const [key, value] of Object.entries(updates)) {
-      mappedUpdates[fieldMapping[key] || fieldMapping[key.replace(/([A-Z])/g, '_$1').toLowerCase()] || key] = value;
+      const mappedKey = fieldMapping[key] || fieldMapping[key.replace(/([A-Z])/g, '_$1').toLowerCase()] || key;
+      // تجاهل last_active_at من العميل لأننا نحدثه تلقائياً
+      if (mappedKey !== 'last_active_at') {
+        mappedUpdates[mappedKey] = value;
+      }
     }
+    
+    // أضف last_active_at دائماً
+    mappedUpdates.last_active_at = new Date();
     
     const keys = Object.keys(mappedUpdates);
     const values = Object.values(mappedUpdates);
     
     const setClause = keys.map((key, i) => `${key} = $${i + 1}`).join(', ');
-    const query = `UPDATE visitors SET ${setClause}, last_active_at = NOW() WHERE id = $${keys.length + 1} RETURNING *`;
+    const query = `UPDATE visitors SET ${setClause} WHERE id = $${keys.length + 1} RETURNING *`;
     
     const result = await pool.query(query, [...values, id]);
     

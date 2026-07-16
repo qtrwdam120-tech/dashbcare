@@ -2,9 +2,9 @@
 // خدمة API للوحة التحكم - الاتصال بالخادم
 // ═══════════════════════════════════════════════════════
 
-// الاتصال بالخادم المحلي أو البعيد
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001';
+// استخدام المسار النسبي للإنتاج أو الرابط للبعيد
+const API_BASE = import.meta.env.VITE_API_URL || '';
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || '';
 
 // ═══════════════════════════════════════════════════════
 // REST API Functions
